@@ -1,0 +1,113 @@
+{
+    "name": "Plain with bridge",
+    "width": 4,
+    "height": 6,
+    "teams": [
+        [ "Evil guys",
+            [
+                0, 1, 2, 3, 4, 5 
+            ]],
+            [ "Very evil guys",
+                [
+                    19, 20, 21, 22, 23, 24
+                ]]
+    ],
+    "data": [
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "Water"
+        },
+        {
+            "height": 0,
+            "attribute": "Water"
+        },
+        {
+            "height": 0,
+            "attribute": "Water"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "Water"
+        },
+        {
+            "height": 0,
+            "attribute": "Water"
+        },
+        {
+            "height": 0,
+            "attribute": "Water"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "Water"
+        },
+        {
+            "height": 0,
+            "attribute": "Water"
+        },
+        {
+            "height": 0,
+            "attribute": "Water"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        },
+        {
+            "height": 0,
+            "attribute": "None"
+        }
+    ]
+}

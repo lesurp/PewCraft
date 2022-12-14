@@ -1,0 +1,30 @@
+[
+    {
+        "id": 1000,
+        "kind": {
+            "DirectDamage": {
+                "damage": {
+                    "perc_modif_magical": 1.0
+                } 
+            }
+        }
+    },
+    {
+        "id": 1001,
+        "kind": {
+            "Buff": {
+                "name": "Burn",
+                "success_rate": 0.4,
+                "duration": 3,
+                "kind": {
+                    "DoT": {
+                        "damage": {
+                            "perc_modif_magical": 0.1
+                        } 
+                    }
+                } 
+            }
+        }
+    }
+]
+

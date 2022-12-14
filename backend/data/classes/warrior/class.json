@@ -1,0 +1,13 @@
+{
+    "name": "Warrior",
+    "description": "A fiercy and brave fighter, thanks to his wits, or lack thereof",
+    "health": 15000,
+    "mana": 0,
+    "swiftness": 10000,
+    "strength": 10000,
+    "dexterity": 7000,
+    "armor": 15000,
+    "intelligence": 2000,
+    "concentration": 1000,
+    "willpower": 5000
+}

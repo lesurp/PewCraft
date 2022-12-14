@@ -1,0 +1,15 @@
+[
+    {
+        "name": "Fireball",
+        "cost": 1000,
+        "range": {
+            "min": 1,
+            "max": 10,
+            "kind": "Star",
+            "target": "Anyone",
+            "needs_los": true
+        },
+        "effects": [ 1000, 1001 ]
+    }
+]
+

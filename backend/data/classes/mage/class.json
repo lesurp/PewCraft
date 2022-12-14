@@ -1,0 +1,13 @@
+{
+    "name": "Mage",
+    "description": "`Why do guys with magical powers are always into crossdressing as well` -- Someone, before receiving a fireball in the face",
+    "health": 10000,
+    "mana": 10000,
+    "swiftness": 7000,
+    "strength": 3000,
+    "dexterity": 2000,
+    "armor": 9000,
+    "intelligence": 12000,
+    "concentration": 9000,
+    "willpower": 10000
+}

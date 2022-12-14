@@ -1,0 +1,12 @@
+[
+    {
+        "id": 0,
+        "kind": {
+            "Buff": {
+                "name": "Block",
+                "duration": 1,
+                "kind": { "Attribute": [ "Armor", {"Perc": 0.5 } ] }
+            }
+        }
+    }
+]

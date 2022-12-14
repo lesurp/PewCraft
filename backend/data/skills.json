@@ -1,0 +1,13 @@
+[ {
+    "name": "Block",
+    "cost": 0,
+    "range": {
+        "min": 0,
+        "max": 0,
+        "kind": "Square",
+        "target": "Ally",
+        "needs_los": true
+    },
+    "effects": [ 0 ]
+}
+]

@@ -1,0 +1,13 @@
+[
+    {
+        "id": 1000,
+        "kind": {
+            "DirectDamage": {
+                "damage": {
+                    "perc_modif_phyisical": 1.0
+                } 
+            }
+        }
+    }
+]
+
