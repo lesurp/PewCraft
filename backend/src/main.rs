@@ -44,10 +44,13 @@ fn create_game(
     builders: State<ServerBuiltGames>,
     new_game: Json<WireNewGameRequest>,
 ) -> Json<WireCreatedGame> {
-    let s = rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(10)
-        .collect::<String>();
+    let s = String::from_utf8(
+        rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(10)
+            .collect(),
+    )
+    .unwrap();
     builders.lock().unwrap().insert(
         s.clone(),
         ServerBuiltGame {
@@ -115,10 +118,13 @@ fn create_character(
     let character_id = builder.character_map_builder.add(c).map_err(|_| ())?;
 
     // Player's "login" after successful character creation
-    let s = rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(10)
-        .collect::<String>();
+    let s = String::from_utf8(
+        rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(10)
+            .collect(),
+    )
+    .unwrap();
     builder
         .login_to_character_id
         .insert(s.clone(), character_id);
