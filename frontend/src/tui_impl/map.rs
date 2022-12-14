@@ -138,7 +138,7 @@ impl<'a> FormatMap<'a> {
 }
 
 impl<'a> Widget for FormatMap<'a> {
-    fn draw(&mut self, area: Rect, buf: &mut Buffer) {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let map = &self.0;
         let cell_width = area.width / map.width as u16;
         let cell_height = area.height / map.height as u16;
@@ -159,7 +159,7 @@ impl<'a> Widget for FormatMap<'a> {
             // get the character in the cell (if any)
             let character = self.character(id);
 
-            FormatCell(cell, character, corners).draw(cell_rect, buf);
+            FormatCell(cell, character, corners).render(cell_rect, buf);
 
             id = Id::new(id.raw() + 1);
         }
@@ -168,7 +168,7 @@ impl<'a> Widget for FormatMap<'a> {
 
 struct FormatCell<'a>(&'a Cell, Option<&'a Character>, CellCorner);
 impl<'a> Widget for FormatCell<'a> {
-    fn draw(&mut self, area: Rect, buf: &mut Buffer) {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let cell = self.0;
         let character = self.1;
         let corners = &self.2;

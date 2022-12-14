@@ -1,6 +1,6 @@
 use crate::state::{Event, GlobalState, State};
-use crate::tui::input::{self, TuiEvent};
-use crate::tui::render::Renderer;
+use crate::tui_impl::input::{self, TuiEvent};
+use crate::tui_impl::render::Renderer;
 use clipboard::{ClipboardContext, ClipboardProvider};
 use common::game::GameDefinition;
 use crossterm::{

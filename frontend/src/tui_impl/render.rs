@@ -1,18 +1,34 @@
 use crate::state::{
     CreateCharacterState, CreateOrJoinState, GlobalState, PlayGameState, SelectMapData,
 };
-use crate::tui::map::FormatMap;
+use crate::tui_impl::map::FormatMap;
 use common::game::GameDefinition;
 use log::{debug, info};
 use tui::layout::Alignment;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Modifier, Style};
+use tui::text::Text;
+use tui::widgets::Paragraph;
 use tui::widgets::{Block, Borders, Widget};
-use tui::widgets::{Paragraph, Text};
 use tui::Frame;
 
 const SELECT_MAP_BLOCK_TITLE: &str = "Select map";
 const CREATE_CHAR_BLOCK_TITLE: &str = "Create your character";
+
+trait Reduceable<'a> {
+    fn reduce(self) -> Text<'a>;
+}
+
+impl<'a, const K: usize> Reduceable<'a> for [Text<'a>; K] {
+    fn reduce(self) -> Text<'a> {
+        self.into_iter()
+            .reduce(|mut text, add| {
+                text.extend(add);
+                text
+            })
+            .unwrap()
+    }
+}
 
 pub struct Renderer<'a, 'b, 'c, B: tui::backend::Backend> {
     f: &'a mut Frame<'c, B>,
@@ -34,8 +50,8 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
 
     fn invert_text() -> Style {
         let style = Style::default();
-        let fg = style.fg;
-        let bg = style.bg;
+        let fg = style.fg.unwrap();
+        let bg = style.bg.unwrap();
         style.bg(fg).fg(bg)
     }
 
@@ -58,13 +74,15 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
             GlobalState::WaitForGameCreation(game_state) => {
                 let full_login =
                     format!("{}/{}", game_state.curr().game_id, game_state.curr().login);
-                Block::default()
-                    .title(&format!(
-                        "Waiting for other players | Character login: {}",
-                        full_login
-                    ))
-                    .borders(Borders::ALL)
-                    .render(self.f, self.chunks[1]);
+                self.f.render_widget(
+                    Block::default()
+                        .title(format!(
+                            "Waiting for other players | Character login: {}",
+                            full_login
+                        ))
+                        .borders(Borders::ALL),
+                    self.chunks[1],
+                );
             }
             GlobalState::Exit => panic!("Should not try to render when in the 'Exit' state"),
         };
@@ -90,14 +108,16 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
             ],
         };
 
-        Paragraph::new(text.iter())
-            .block(
-                Block::default()
-                    .title(CREATE_CHAR_BLOCK_TITLE)
-                    .borders(Borders::ALL),
-            )
-            .alignment(Alignment::Left)
-            .render(self.f, self.chunks[1]);
+        self.f.render_widget(
+            Paragraph::new(text.reduce())
+                .block(
+                    Block::default()
+                        .title(CREATE_CHAR_BLOCK_TITLE)
+                        .borders(Borders::ALL),
+                )
+                .alignment(Alignment::Left),
+            self.chunks[1],
+        );
     }
 
     fn create_character(self, create_character: &CreateCharacterState) {
@@ -113,7 +133,7 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                 let text = [
                     Text::styled(
                         format!("    {} / {}", curr_id + 1, class_ids.len()),
-                        Style::default().modifier(Modifier::BOLD),
+                        Style::default().add_modifier(Modifier::BOLD),
                     ),
                     Text::raw("\n    Name:         "),
                     Text::raw(&class.name),
@@ -121,14 +141,16 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                     Text::raw(&class.description),
                 ];
 
-                Paragraph::new(text.iter())
-                    .block(
-                        Block::default()
-                            .title(CREATE_CHAR_BLOCK_TITLE)
-                            .borders(Borders::ALL),
-                    )
-                    .alignment(Alignment::Left)
-                    .render(self.f, self.chunks[1]);
+                self.f.render_widget(
+                    Paragraph::new(text.reduce())
+                        .block(
+                            Block::default()
+                                .title(CREATE_CHAR_BLOCK_TITLE)
+                                .borders(Borders::ALL),
+                        )
+                        .alignment(Alignment::Left),
+                    self.chunks[1],
+                );
                 s.curr().map
             }
             CreateCharacterState::Name(s) => {
@@ -136,14 +158,16 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                     "    Now type your name: {}",
                     s.curr().name
                 ))];
-                Paragraph::new(text.iter())
-                    .block(
-                        Block::default()
-                            .title(CREATE_CHAR_BLOCK_TITLE)
-                            .borders(Borders::ALL),
-                    )
-                    .alignment(Alignment::Left)
-                    .render(self.f, self.chunks[1]);
+                self.f.render_widget(
+                    Paragraph::new(text.reduce())
+                        .block(
+                            Block::default()
+                                .title(CREATE_CHAR_BLOCK_TITLE)
+                                .borders(Borders::ALL),
+                        )
+                        .alignment(Alignment::Left),
+                    self.chunks[1],
+                );
                 s.curr().map
             }
             CreateCharacterState::Team(s) => {
@@ -158,21 +182,23 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                 let text = [
                     Text::styled(
                         format!("    {} / {}", curr_id + 1, team_ids.len()),
-                        Style::default().modifier(Modifier::BOLD),
+                        Style::default().add_modifier(Modifier::BOLD),
                     ),
                     Text::raw("\n    Name:         "),
                     Text::raw(&team.0),
                     Text::raw("\n    TODO store the nb of players, and what classes are already taken etc. OR EVEN BETTER<, SHOW THEM ON THE MAP!")
                 ];
 
-                Paragraph::new(text.iter())
-                    .block(
-                        Block::default()
-                            .title(CREATE_CHAR_BLOCK_TITLE)
-                            .borders(Borders::ALL),
-                    )
-                    .alignment(Alignment::Left)
-                    .render(self.f, self.chunks[1]);
+                self.f.render_widget(
+                    Paragraph::new(text.reduce())
+                        .block(
+                            Block::default()
+                                .title(CREATE_CHAR_BLOCK_TITLE)
+                                .borders(Borders::ALL),
+                        )
+                        .alignment(Alignment::Left),
+                    self.chunks[1],
+                );
                 s.curr().map
             }
             CreateCharacterState::Position(s) => {
@@ -184,37 +210,39 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                 let text = [
                     Text::styled(
                         format!("    {} / {}", curr_id + 1, positions.len()),
-                        Style::default().modifier(Modifier::BOLD),
+                        Style::default().add_modifier(Modifier::BOLD),
                     ),
                     Text::raw("\n    Initial position:         "),
                     Text::raw(format!("X: {}", x)),
                     Text::raw(format!("Y: {}", y)),
                 ];
 
-                Paragraph::new(text.iter())
-                    .block(
-                        Block::default()
-                            .title(CREATE_CHAR_BLOCK_TITLE)
-                            .borders(Borders::ALL),
-                    )
-                    .alignment(Alignment::Left)
-                    .render(self.f, self.chunks[1]);
+                self.f.render_widget(
+                    Paragraph::new(text.reduce())
+                        .block(
+                            Block::default()
+                                .title(CREATE_CHAR_BLOCK_TITLE)
+                                .borders(Borders::ALL),
+                        )
+                        .alignment(Alignment::Left),
+                    self.chunks[1],
+                );
                 s.curr().map
             }
         };
-        FormatMap(map, None).render(self.f, self.chunks[0]);
+        self.f.render_widget(FormatMap(map, None), self.chunks[0]);
     }
 
     fn select_map(self, s: &SelectMapData) {
         let map_ids = &s.curr().map_ids;
         let curr_id = s.curr().curr_id;
         let map = self.g.maps.get(*map_ids.get(curr_id).unwrap()).unwrap();
-        FormatMap(map, None).render(self.f, self.chunks[0]);
+        self.f.render_widget(FormatMap(map, None), self.chunks[0]);
 
         let text = [
             Text::styled(
                 format!("    {} / {}", curr_id + 1, map_ids.len()),
-                Style::default().modifier(Modifier::BOLD),
+                Style::default().add_modifier(Modifier::BOLD),
             ),
             Text::raw("\n    Name:      "),
             Text::raw(&map.name),
@@ -226,27 +254,30 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
             Text::raw(format!("{}", map.teams.len())),
         ];
 
-        Paragraph::new(text.iter())
-            .block(
-                Block::default()
-                    .title(SELECT_MAP_BLOCK_TITLE)
-                    .borders(Borders::ALL),
-            )
-            .alignment(Alignment::Left)
-            .render(self.f, self.chunks[1]);
+        self.f.render_widget(
+            Paragraph::new(text.reduce())
+                .block(
+                    Block::default()
+                        .title(SELECT_MAP_BLOCK_TITLE)
+                        .borders(Borders::ALL),
+                )
+                .alignment(Alignment::Left),
+            self.chunks[1],
+        );
     }
 
     fn play_game(self, s: &PlayGameState) {
         match s {
             PlayGameState::NotOurTurn(s) | PlayGameState::OurTurn(s) => {
                 let map = s.prev().game.maps.get(s.curr().game_state.map).unwrap();
-                FormatMap(map, None).render(self.f, self.chunks[0]);
+                self.f.render_widget(FormatMap(map, None), self.chunks[0]);
             }
         }
-
-        Block::default()
-            .title("PLAYING THE GAME ASODUHASUOB")
-            .borders(Borders::ALL)
-            .render(self.f, self.chunks[1]);
+        self.f.render_widget(
+            Block::default()
+                .title("PLAYING THE GAME ASODUHASUOB")
+                .borders(Borders::ALL),
+            self.chunks[1],
+        );
     }
 }

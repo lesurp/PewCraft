@@ -4,7 +4,7 @@ use std::io::{stdin, stdout};
 
 mod api;
 mod state;
-mod tui;
+mod tui_impl;
 
 fn main() {
     env_logger::init();
@@ -15,7 +15,7 @@ fn main() {
 
     let stdin = stdin();
     let mut stdout = stdout();
-    let mut tui = tui::Tui::new(&game, &stdin, &mut stdout);
+    let mut tui = tui_impl::Tui::new(&game, &stdin, &mut stdout);
     let mut s = GlobalState::new(&game, &endpoint);
 
     loop {
