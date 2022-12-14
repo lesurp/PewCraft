@@ -2,12 +2,12 @@ use crate::state::{Event, GlobalState, State};
 use crate::tui::input::{self, TuiEvent};
 use crate::tui::render::Renderer;
 use clipboard::{ClipboardContext, ClipboardProvider};
+use common::game::GameDefinition;
 use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use log::{debug, info};
-use pewcraft_common::game::GameDefinition;
 use std::io::{Stdin, Stdout, StdoutLock, Write};
 use tui::backend::CrosstermBackend;
 use tui::Terminal;

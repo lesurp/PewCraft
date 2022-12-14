@@ -1,13 +1,13 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-use lazy_static::lazy_static;
-use pewcraft_common::{
+use common::{
     game::{Character, CharacterMapBuilder, GameDefinition, GameMap, GameState, Id},
     io::{
         WireAction, WireCreatedChar, WireCreatedGame, WireGetGame, WireNewCharRequest,
         WireNewGameRequest,
     },
 };
+use lazy_static::lazy_static;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use rocket::{get, post, routes, State};

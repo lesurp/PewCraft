@@ -52,8 +52,12 @@ impl<'a> CharacterMapBuilder<'a> {
         }
 
         // Available cells left
-        if !cells_left.remove_item(&c.position).is_some() {
-            return Err(Error::InvalidStartingCell);
+        let index = cells_left.iter().position(|cell| *cell == c.position);
+        match index {
+            Some(index) => {
+                cells_left.remove(index);
+            }
+            _ => return Err(Error::InvalidStartingCell),
         }
 
         *spots_left -= 1;

@@ -1,5 +1,5 @@
+use common::game::{Class, Effect, GameDefinition, GameMap, Id, IdMapBuilder, Skill};
 use log::debug;
-use pewcraft_common::game::{Class, Effect, GameDefinition, GameMap, Id, IdMapBuilder, Skill};
 use serde_json::from_reader;
 use std::collections::HashMap;
 use std::fs;

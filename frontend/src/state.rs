@@ -1,9 +1,7 @@
 use crate::api;
+use common::game::{Cell, Character, Class, GameDefinition, GameMap, GameState, Id, Team};
+use common::io::{WireCreatedChar, WireCreatedGame, WireNewCharRequest, WireNewGameRequest};
 use log::debug;
-use pewcraft_common::game::{Cell, Character, Class, GameDefinition, GameMap, GameState, Id, Team};
-use pewcraft_common::io::{
-    WireCreatedChar, WireCreatedGame, WireNewCharRequest, WireNewGameRequest,
-};
 
 #[derive(Debug)]
 pub enum Event {

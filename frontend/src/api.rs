@@ -1,6 +1,6 @@
+use common::game::{GameDefinition, GameMap, GameState, Id};
+use common::io::{WireCreatedChar, WireCreatedGame, WireNewCharRequest, WireNewGameRequest};
 use log::{debug, info};
-use pewcraft_common::game::{GameDefinition, GameState, GameMap, Id};
-use pewcraft_common::io::{WireCreatedGame, WireNewGameRequest, WireNewCharRequest, WireCreatedChar};
 use reqwest::{blocking::Client, Url};
 use std::fmt;
 
@@ -40,7 +40,7 @@ impl Endpoint {
 
     pub fn join_game<S: AsRef<str>>(&self, game_id: S) -> Option<WireCreatedGame> {
         unimplemented!()
-            /*
+        /*
         debug!("Creating char with request: {:?}", request);
         self.client
             .post(self.url.join(game_id.as_ref()).unwrap())
@@ -52,9 +52,13 @@ impl Endpoint {
             */
     }
 
-    pub fn join_game_with_char<S: AsRef<str>>(&self, game_id: S, char_id: S) -> Option<WireCreatedGame> {
+    pub fn join_game_with_char<S: AsRef<str>>(
+        &self,
+        game_id: S,
+        char_id: S,
+    ) -> Option<WireCreatedGame> {
         unimplemented!()
-            /*
+        /*
         debug!("Creating char with request: {:?}", request);
         self.client
             .post(self.url.join(game_id.as_ref()).unwrap())
@@ -66,7 +70,11 @@ impl Endpoint {
             */
     }
 
-    pub fn create_char<S: AsRef<str>>(&self, game_id: S, request: WireNewCharRequest) -> WireCreatedChar {
+    pub fn create_char<S: AsRef<str>>(
+        &self,
+        game_id: S,
+        request: WireNewCharRequest,
+    ) -> WireCreatedChar {
         debug!("Creating char with request: {:?}", request);
         self.client
             .post(self.url.join(game_id.as_ref()).unwrap())

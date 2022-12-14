@@ -2,8 +2,8 @@ use crate::state::{
     CreateCharacterState, CreateOrJoinState, GlobalState, PlayGameState, SelectMapData,
 };
 use crate::tui::map::FormatMap;
+use common::game::GameDefinition;
 use log::{debug, info};
-use pewcraft_common::game::GameDefinition;
 use tui::layout::Alignment;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Modifier, Style};
