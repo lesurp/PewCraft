@@ -48,11 +48,13 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
         Renderer { f, s, g, chunks }.render_impl();
     }
 
+    // TODO: what was this for again?
     fn invert_text() -> Style {
-        let style = Style::default();
-        let fg = style.fg.unwrap();
-        let bg = style.bg.unwrap();
-        style.bg(fg).fg(bg)
+        //let style = Style::default();
+        //let fg = style.fg.unwrap();
+        //let bg = style.bg.unwrap();
+        //style.bg(fg).fg(bg)
+        Style::default()
     }
 
     fn render_impl(self) {

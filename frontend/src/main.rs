@@ -11,12 +11,15 @@ fn main() {
 
     let url = "http://localhost:8000";
     let endpoint = api::Endpoint::new(url);
+    debug!("Created API endpoint");
     let game = endpoint.load_game();
+    info!("Loaded game from server");
 
     let stdin = stdin();
     let mut stdout = stdout();
     let mut tui = tui_impl::Tui::new(&game, &stdin, &mut stdout);
     let mut s = GlobalState::new(&game, &endpoint);
+    debug!("Created game state");
 
     loop {
         debug!("Current state: {:?}", s);

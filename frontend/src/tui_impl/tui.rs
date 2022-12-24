@@ -3,6 +3,7 @@ use crate::tui_impl::input::{self, TuiEvent};
 use crate::tui_impl::render::Renderer;
 use clipboard::{ClipboardContext, ClipboardProvider};
 use common::game::GameDefinition;
+use crossterm::ExecutableCommand;
 use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -21,8 +22,10 @@ pub struct Tui<'a> {
 
 impl<'a> Tui<'a> {
     pub fn new(game_definition: &'a GameDefinition, _: &'a Stdin, stdout: &'a mut Stdout) -> Self {
+        debug!("Enabling raw mode");
         enable_raw_mode().unwrap();
-        execute!(stdout, EnterAlternateScreen).unwrap();
+        debug!("Raw mode enabled");
+        stdout.execute(EnterAlternateScreen).unwrap();
         let backend = CrosstermBackend::new(stdout.lock());
         //let stdin = stdin.lock().bytes();
         let stdout = Terminal::new(backend).unwrap();
