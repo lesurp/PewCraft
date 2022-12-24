@@ -3,6 +3,17 @@ use common::game::{Cell, Character, Class, GameDefinition, GameMap, GameState, I
 use common::io::{WireCreatedChar, WireCreatedGame, WireNewCharRequest, WireNewGameRequest};
 use log::debug;
 
+fn wrap_inc(n: usize, max_n: usize) -> usize {
+    (n + 1) % max_n
+}
+
+fn wrap_dec(n: usize, max_n: usize) -> usize {
+    match n {
+        0 => max_n - 1,
+        n => n - 1,
+    }
+}
+
 #[derive(Debug)]
 pub enum Event {
     Timeout,
@@ -72,6 +83,7 @@ impl State for GlobalState {
                 create_or_join.next(game_definition, endpoint, event)
             }
             (GlobalState::SelectMap(s), event) => s.next(game_definition, endpoint, event),
+            (GlobalState::CreateCharacter(c), event) => c.next(game_definition, endpoint, event),
             (s, i) => unimplemented!("Input: {i:?}\nState: {s:?}"),
             /*
             /* SelectMap */
@@ -156,7 +168,7 @@ impl GlobalState {
         map: Id<GameMap>,
     ) -> GlobalState {
         let create_character_state = CreateCharacterState {
-            step: CreateCharacterStep::Name,
+            step: CreateCharacterStep::Team,
             name: String::new(),
             class_index: 0,
             team_index: 0,
@@ -307,7 +319,7 @@ impl SelectMapState {
 
 impl State for SelectMapState {
     fn expected_event(&self) -> ExpectedEvent {
-        todo!()
+        ExpectedEvent::Char
     }
 
     fn next(
@@ -317,8 +329,8 @@ impl State for SelectMapState {
         event: Event,
     ) -> GlobalState {
         match event {
-            Event::Right => self.curr_id = (self.curr_id + 1) % self.map_ids.len(),
-            Event::Left => self.curr_id = (self.curr_id - 1) % self.map_ids.len(),
+            Event::Right => self.curr_id = wrap_inc(self.curr_id, self.map_ids.len()),
+            Event::Left => self.curr_id = wrap_dec(self.curr_id, self.map_ids.len()),
             Event::Confirm => {
                 let map_id = *self.map_ids.get(self.curr_id).unwrap();
                 // TODO hardcoded team size
@@ -359,17 +371,137 @@ pub struct CreateCharacterState {
     pub step: CreateCharacterStep,
 }
 
+impl CreateCharacterState {
+    fn handle_event_name(
+        mut self,
+        game_definition: &GameDefinition,
+        endpoint: &Endpoint,
+        event: Event,
+    ) -> GlobalState {
+        match event {
+            Event::PrintableString(string) => {
+                self.name.push_str(&string);
+                GlobalState::CreateCharacter(self)
+            }
+            Event::Backspace => {
+                self.name.pop();
+                GlobalState::CreateCharacter(self)
+            }
+            Event::Confirm => {
+                debug!("Creating character with name {}", self.name);
+                let name = self.name;
+                let class = *self.classes.get(self.class_index).unwrap();
+                let team = *self.teams.get(self.team_index).unwrap();
+                let position = *game_definition
+                    .maps
+                    .get(self.map)
+                    .unwrap()
+                    .teams
+                    .get(team.raw())
+                    .unwrap()
+                    .1
+                    .get(self.position_index)
+                    .unwrap();
+                let WireCreatedChar(login, id) = endpoint.create_char(
+                    &self.game_id,
+                    WireNewCharRequest {
+                        name,
+                        class,
+                        team,
+                        position,
+                    },
+                );
+                GlobalState::WaitForGameCreation(WaitForGameCreationState {
+                    map: self.map,
+                    game_id: self.game_id,
+                    login,
+                    id,
+                })
+            }
+            _ => GlobalState::CreateCharacter(self),
+        }
+    }
+
+    fn handle_event_team(
+        mut self,
+        game_definition: &GameDefinition,
+        endpoint: &Endpoint,
+        event: Event,
+    ) -> GlobalState {
+        match event {
+            Event::Right => {
+                self.team_index = wrap_inc(self.team_index, self.teams.len());
+            }
+            Event::Left => {
+                self.team_index = wrap_dec(self.team_index, self.teams.len());
+            }
+            Event::Confirm => {
+                self.step = CreateCharacterStep::Class;
+            }
+            _ => {}
+        }
+        GlobalState::CreateCharacter(self)
+    }
+
+    fn handle_event_class(
+        mut self,
+        game_definition: &GameDefinition,
+        endpoint: &Endpoint,
+        event: Event,
+    ) -> GlobalState {
+        match event {
+            Event::Right => {
+                self.class_index = wrap_inc(self.class_index, self.classes.len());
+            }
+            Event::Left => {
+                self.class_index = wrap_dec(self.class_index, self.classes.len());
+            }
+            Event::Confirm => {
+                self.step = CreateCharacterStep::Position;
+            }
+            _ => {}
+        }
+        GlobalState::CreateCharacter(self)
+    }
+
+    fn handle_event_position(
+        mut self,
+        game_definition: &GameDefinition,
+        endpoint: &Endpoint,
+        event: Event,
+    ) -> GlobalState {
+        let positions = &game_definition
+            .maps
+            .get(self.map)
+            .unwrap()
+            .teams
+            .get(self.team_index)
+            .unwrap()
+            .1;
+        match event {
+            Event::Right => {
+                self.position_index = wrap_inc(self.position_index, positions.len());
+            }
+            Event::Left => {
+                self.position_index = wrap_dec(self.position_index, positions.len());
+            }
+            Event::Confirm => {
+                self.step = CreateCharacterStep::Position;
+            }
+            _ => {}
+        }
+        GlobalState::CreateCharacter(self)
+    }
+}
+
 impl State for CreateCharacterState {
     fn expected_event(&self) -> ExpectedEvent {
-        todo!()
-        /*
-        match self {
-            CreateCharacterState::Team(_) => ExpectedEvent::SelectionHorizontal,
-            CreateCharacterState::Class(_) => ExpectedEvent::SelectionHorizontal,
-            CreateCharacterState::Position(_) => ExpectedEvent::Selection,
-            CreateCharacterState::Name(_) => ExpectedEvent::Char,
+        match self.step {
+            CreateCharacterStep::Team => ExpectedEvent::SelectionHorizontal,
+            CreateCharacterStep::Class => ExpectedEvent::SelectionHorizontal,
+            CreateCharacterStep::Position => ExpectedEvent::Selection,
+            CreateCharacterStep::Name => ExpectedEvent::Char,
         }
-        */
     }
 
     fn next(
@@ -378,119 +510,14 @@ impl State for CreateCharacterState {
         endpoint: &Endpoint,
         event: Event,
     ) -> GlobalState {
-        todo!()
-        /*
-            match (self, i) {
-                // FIRST CHOOSE THE TEAM
-                (CreateCharacterState::Team(mut s), Event::Right) => {
-                    if s.curr().team_index == s.curr().teams.len() - 1 {
-                        s.curr_mut().team_index = 0;
-                    } else {
-                        s.curr_mut().team_index += 1;
-                    }
-                    GlobalState::CreateCharacter(CreateCharacterState::Team(s))
-                }
-                (CreateCharacterState::Team(mut s), Event::Left) => {
-                    if s.curr_mut().team_index == 0 {
-                        s.curr_mut().team_index = s.curr().teams.len() - 1;
-                    } else {
-                        s.curr_mut().team_index -= 1;
-                    }
-                    GlobalState::CreateCharacter(CreateCharacterState::Team(s))
-                }
-                (CreateCharacterState::Team(s), Event::Confirm) => {
-                    GlobalState::CreateCharacter(CreateCharacterState::Class(s))
-                }
-
-                // THEN THE CLASS
-                (CreateCharacterState::Class(mut s), Event::Right) => {
-                    if s.curr().class_index == s.curr().classes.len() - 1 {
-                        s.curr_mut().class_index = 0;
-                    } else {
-                        s.curr_mut().class_index += 1;
-                    }
-                    GlobalState::CreateCharacter(CreateCharacterState::Class(s))
-                }
-                (CreateCharacterState::Class(mut s), Event::Left) => {
-                    if s.curr_mut().class_index == 0 {
-                        s.curr_mut().class_index = s.curr().classes.len() - 1;
-                    } else {
-                        s.curr_mut().class_index -= 1;
-                    }
-                    GlobalState::CreateCharacter(CreateCharacterState::Class(s))
-                }
-                (CreateCharacterState::Class(s), Event::Confirm) => {
-                    GlobalState::CreateCharacter(CreateCharacterState::Position(s))
-                }
-
-                // THEN THE POSITION
-                (CreateCharacterState::Position(mut s), Event::Right) => {
-                    let positions = &s.curr().map.teams.get(s.curr().team_index).unwrap().1;
-                    if s.curr().position_index == positions.len() - 1 {
-                        s.curr_mut().position_index = 0;
-                    } else {
-                        s.curr_mut().position_index += 1;
-                    }
-                    GlobalState::CreateCharacter(CreateCharacterState::Position(s))
-                }
-                (CreateCharacterState::Position(mut s), Event::Left) => {
-                    let positions = &s.curr().map.teams.get(s.curr().team_index).unwrap().1;
-                    if s.curr_mut().position_index == 0 {
-                        s.curr_mut().position_index = positions.len() - 1;
-                    } else {
-                        s.curr_mut().position_index -= 1;
-                    }
-                    GlobalState::CreateCharacter(CreateCharacterState::Position(s))
-                }
-                (CreateCharacterState::Position(s), Event::Confirm) => {
-                    GlobalState::CreateCharacter(CreateCharacterState::Name(s))
-                }
-
-                // THEN THE NAME
-                (CreateCharacterState::Name(mut s), Event::PrintableString(string)) => {
-                    s.curr_mut().name.push_str(&string);
-                    GlobalState::CreateCharacter(CreateCharacterState::Name(s))
-                }
-                (CreateCharacterState::Name(mut s), Event::Backspace) => {
-                    s.curr_mut().name.pop();
-                    GlobalState::CreateCharacter(CreateCharacterState::Name(s))
-                }
-                (CreateCharacterState::Name(s), Event::Confirm) => {
-                    debug!("Creating character with name {}", s.curr().name);
-                    let (global, create_char) = s.split();
-                    let name = create_char.name;
-                    let class = *create_char.classes.get(create_char.class_index).unwrap();
-                    let team = *create_char.teams.get(create_char.team_index).unwrap();
-                    let position = *create_char
-                        .map
-                        .teams
-                        .get(team.raw())
-                        .unwrap()
-                        .1
-                        .get(create_char.position_index)
-                        .unwrap();
-                    let WireCreatedChar(login, id) = global.endpoint.create_char(
-                        &create_char.game_id,
-                        WireNewCharRequest {
-                            name,
-                            class,
-                            team,
-                            position,
-                        },
-                    );
-                    GlobalState::WaitForGameCreation(WaitForGameCreationData::new(
-                        global,
-                        WaitForGameCreationState {
-                            map: create_char.map,
-                            game_id: create_char.game_id,
-                            login,
-                            id,
-                        },
-                    ))
-                }
-                unchanged => GlobalState::CreateCharacter(unchanged.0),
+        match self.step {
+            CreateCharacterStep::Class => self.handle_event_class(game_definition, endpoint, event),
+            CreateCharacterStep::Team => self.handle_event_team(game_definition, endpoint, event),
+            CreateCharacterStep::Position => {
+                self.handle_event_position(game_definition, endpoint, event)
             }
-        */
+            CreateCharacterStep::Name => self.handle_event_name(game_definition, endpoint, event),
+        }
     }
 }
 
@@ -499,7 +526,7 @@ pub struct PlayGameState {
     pub cell: Id<Cell>,
     pub game_state: GameState,
     //pub map: &'a GameMap,
-    pub map: Vec<Id<GameMap>>,
+    pub map: Id<GameMap>,
     pub game_id: String,
     pub login: String,
     pub id: Id<Character>,
@@ -527,7 +554,7 @@ impl State for PlayGameState {
 
 #[derive(Debug)]
 pub struct WaitForGameCreationState {
-    pub map: Vec<Id<GameMap>>,
+    pub map: Id<GameMap>,
     //pub map: &'a GameMap,
     pub game_id: String,
     pub login: String,

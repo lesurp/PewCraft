@@ -40,6 +40,7 @@ fn char_to_event(c: char, ev: ExpectedEvent) -> TuiEvent {
             'j' => Event::Down,
             'k' => Event::Up,
             'y' => return TuiEvent::CopyClipboard,
+            '[' => return TuiEvent::PasteClipboard,
             c => Event::PrintableString(c.to_string()),
         }
     })
