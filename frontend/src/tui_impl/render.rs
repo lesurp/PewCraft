@@ -3,13 +3,13 @@ use crate::state::{
 };
 use crate::tui_impl::map::FormatMap;
 use common::game::GameDefinition;
-use log::{debug, info};
+
 use tui::layout::Alignment;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Modifier, Style};
 use tui::text::Text;
 use tui::widgets::Paragraph;
-use tui::widgets::{Block, Borders, Widget};
+use tui::widgets::{Block, Borders};
 use tui::Frame;
 
 const SELECT_MAP_BLOCK_TITLE: &str = "Select map";

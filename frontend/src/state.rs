@@ -280,7 +280,7 @@ impl<'a> State for CreateOrJoinState<'a> {
                         } else {
                             let game_id = &login[..10];
                             let char_id = &login[11..];
-                            let joined_game = global.endpoint.join_game_with_char(game_id, char_id);
+                            let _joined_game = global.endpoint.join_game_with_char(game_id, char_id);
                             unimplemented!()
                             //match joined_game
                         }
@@ -485,7 +485,7 @@ impl<'a> State for PlayGameState<'a> {
         }
     }
 
-    fn next(self, i: Event) -> Self::RootState {
+    fn next(self, _i: Event) -> Self::RootState {
         unimplemented!()
     }
 }

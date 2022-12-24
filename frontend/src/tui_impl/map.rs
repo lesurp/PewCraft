@@ -169,8 +169,8 @@ impl<'a> Widget for FormatMap<'a> {
 struct FormatCell<'a>(&'a Cell, Option<&'a Character>, CellCorner);
 impl<'a> Widget for FormatCell<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let cell = self.0;
-        let character = self.1;
+        let _cell = self.0;
+        let _character = self.1;
         let corners = &self.2;
 
         for x in 1..area.width {

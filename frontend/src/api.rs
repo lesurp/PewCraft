@@ -1,4 +1,4 @@
-use common::game::{GameDefinition, GameMap, GameState, Id};
+use common::game::{GameDefinition, GameState};
 use common::io::{WireCreatedChar, WireCreatedGame, WireNewCharRequest, WireNewGameRequest};
 use log::{debug, info};
 use reqwest::{blocking::Client, Url};
@@ -38,7 +38,7 @@ impl Endpoint {
             .unwrap()
     }
 
-    pub fn join_game<S: AsRef<str>>(&self, game_id: S) -> Option<WireCreatedGame> {
+    pub fn join_game<S: AsRef<str>>(&self, _game_id: S) -> Option<WireCreatedGame> {
         unimplemented!()
         /*
         debug!("Creating char with request: {:?}", request);
@@ -54,8 +54,8 @@ impl Endpoint {
 
     pub fn join_game_with_char<S: AsRef<str>>(
         &self,
-        game_id: S,
-        char_id: S,
+        _game_id: S,
+        _char_id: S,
     ) -> Option<WireCreatedGame> {
         unimplemented!()
         /*
