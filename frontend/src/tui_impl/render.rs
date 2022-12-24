@@ -1,5 +1,6 @@
 use crate::state::{
-    CreateCharacterState, CreateOrJoinState, GlobalState, PlayGameState, SelectMapData,
+    CreateCharacterState, CreateCharacterStep, CreateOrJoinState, GlobalState, PlayGameState,
+    SelectMapState,
 };
 use crate::tui_impl::map::FormatMap;
 use common::game::GameDefinition;
@@ -30,15 +31,15 @@ impl<'a, const K: usize> Reduceable<'a> for [Text<'a>; K] {
     }
 }
 
-pub struct Renderer<'a, 'b, 'c, B: tui::backend::Backend> {
+pub struct Renderer<'a, 'c, B: tui::backend::Backend> {
     f: &'a mut Frame<'c, B>,
-    s: &'a GlobalState<'b>,
+    s: &'a GlobalState,
     g: &'a GameDefinition,
     chunks: Vec<tui::layout::Rect>,
 }
 
-impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
-    pub fn render(f: &'a mut Frame<'c, B>, s: &'a GlobalState<'b>, g: &'a GameDefinition) {
+impl<'a, 'c, B: tui::backend::Backend> Renderer<'a, 'c, B> {
+    pub fn render(f: &'a mut Frame<'c, B>, s: &'a GlobalState, g: &'a GameDefinition) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
@@ -48,13 +49,11 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
         Renderer { f, s, g, chunks }.render_impl();
     }
 
-    // TODO: what was this for again?
     fn invert_text() -> Style {
-        //let style = Style::default();
-        //let fg = style.fg.unwrap();
-        //let bg = style.bg.unwrap();
-        //style.bg(fg).fg(bg)
-        Style::default()
+        let style = Style::default();
+        let fg = style.fg.unwrap_or(tui::style::Color::White);
+        let bg = style.bg.unwrap_or(tui::style::Color::Black);
+        style.bg(fg).fg(bg)
     }
 
     fn render_impl(self) {
@@ -74,13 +73,11 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
             }
             // TODO
             GlobalState::WaitForGameCreation(game_state) => {
-                let full_login =
-                    format!("{}/{}", game_state.curr().game_id, game_state.curr().login);
+                let full_login = format!("{}/{}", game_state.game_id, game_state.login);
                 self.f.render_widget(
                     Block::default()
                         .title(format!(
-                            "Waiting for other players | Character login: {}",
-                            full_login
+                            "Waiting for other players | Character login: {full_login}"
                         ))
                         .borders(Borders::ALL),
                     self.chunks[1],
@@ -98,7 +95,7 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                 Text::raw("\n or "),
                 Text::raw("JOIN"),
                 Text::raw("Login: "),
-                Text::raw(&s.curr().login),
+                Text::raw(&s.login),
             ],
             CreateOrJoinState::Join(s) => [
                 Text::raw("    "),
@@ -106,7 +103,7 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                 Text::raw("\n or "),
                 Text::styled("JOIN", Self::invert_text()),
                 Text::raw("Login: "),
-                Text::raw(&s.curr().login),
+                Text::raw(&s.login),
             ],
         };
 
@@ -123,10 +120,10 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
     }
 
     fn create_character(self, create_character: &CreateCharacterState) {
-        let map = match create_character {
-            CreateCharacterState::Class(s) => {
-                let curr_id = s.curr().class_index;
-                let class_ids = &s.curr().classes;
+        let map = match create_character.step {
+            CreateCharacterStep::Class => {
+                let curr_id = create_character.class_index;
+                let class_ids = &create_character.classes;
                 let class = self
                     .g
                     .classes
@@ -153,12 +150,12 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                         .alignment(Alignment::Left),
                     self.chunks[1],
                 );
-                s.curr().map
+                create_character.map
             }
-            CreateCharacterState::Name(s) => {
+            CreateCharacterStep::Name => {
                 let text = [Text::raw(format!(
                     "    Now type your name: {}",
-                    s.curr().name
+                    create_character.name
                 ))];
                 self.f.render_widget(
                     Paragraph::new(text.reduce())
@@ -170,14 +167,16 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                         .alignment(Alignment::Left),
                     self.chunks[1],
                 );
-                s.curr().map
+                create_character.map
             }
-            CreateCharacterState::Team(s) => {
-                let curr_id = s.curr().team_index;
-                let team_ids = &s.curr().teams;
-                let team = s
-                    .curr()
-                    .map
+            CreateCharacterStep::Team => {
+                let curr_id = create_character.team_index;
+                let team_ids = &create_character.teams;
+                let team = self
+                    .g
+                    .maps
+                    .get(create_character.map)
+                    .unwrap()
                     .teams
                     .get(team_ids.get(curr_id).unwrap().raw())
                     .unwrap();
@@ -201,22 +200,35 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                         .alignment(Alignment::Left),
                     self.chunks[1],
                 );
-                s.curr().map
+                create_character.map
             }
-            CreateCharacterState::Position(s) => {
-                let curr_id = s.curr().position_index;
-                let positions = &s.curr().map.teams.get(s.curr().team_index).unwrap().1;
+            CreateCharacterStep::Position => {
+                let curr_id = create_character.position_index;
+                let positions = &self
+                    .g
+                    .maps
+                    .get(create_character.map)
+                    .unwrap()
+                    .teams
+                    .get(create_character.team_index)
+                    .unwrap()
+                    .1;
                 let position = positions.get(curr_id).unwrap();
 
-                let (x, y) = s.curr().map.id_to_xy(*position);
+                let (x, y) = self
+                    .g
+                    .maps
+                    .get(create_character.map)
+                    .unwrap()
+                    .id_to_xy(*position);
                 let text = [
                     Text::styled(
                         format!("    {} / {}", curr_id + 1, positions.len()),
                         Style::default().add_modifier(Modifier::BOLD),
                     ),
                     Text::raw("\n    Initial position:         "),
-                    Text::raw(format!("X: {}", x)),
-                    Text::raw(format!("Y: {}", y)),
+                    Text::raw(format!("X: {x}")),
+                    Text::raw(format!("Y: {y}")),
                 ];
 
                 self.f.render_widget(
@@ -229,15 +241,16 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
                         .alignment(Alignment::Left),
                     self.chunks[1],
                 );
-                s.curr().map
+                create_character.map
             }
         };
+        let map = self.g.maps.get(map).unwrap();
         self.f.render_widget(FormatMap(map, None), self.chunks[0]);
     }
 
-    fn select_map(self, s: &SelectMapData) {
-        let map_ids = &s.curr().map_ids;
-        let curr_id = s.curr().curr_id;
+    fn select_map(self, s: &SelectMapState) {
+        let map_ids = &s.map_ids;
+        let curr_id = s.curr_id;
         let map = self.g.maps.get(*map_ids.get(curr_id).unwrap()).unwrap();
         self.f.render_widget(FormatMap(map, None), self.chunks[0]);
 
@@ -269,12 +282,8 @@ impl<'a, 'b, 'c, B: tui::backend::Backend> Renderer<'a, 'b, 'c, B> {
     }
 
     fn play_game(self, s: &PlayGameState) {
-        match s {
-            PlayGameState::NotOurTurn(s) | PlayGameState::OurTurn(s) => {
-                let map = s.prev().game.maps.get(s.curr().game_state.map).unwrap();
-                self.f.render_widget(FormatMap(map, None), self.chunks[0]);
-            }
-        }
+        let map = self.g.maps.get(s.game_state.map).unwrap();
+        self.f.render_widget(FormatMap(map, None), self.chunks[0]);
         self.f.render_widget(
             Block::default()
                 .title("PLAYING THE GAME ASODUHASUOB")

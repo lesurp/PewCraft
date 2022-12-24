@@ -18,7 +18,7 @@ fn main() {
     let stdin = stdin();
     let mut stdout = stdout();
     let mut tui = tui_impl::Tui::new(&game, &stdin, &mut stdout);
-    let mut s = GlobalState::new(&game, &endpoint);
+    let mut s = GlobalState::new();
     debug!("Created game state");
 
     loop {
@@ -26,7 +26,7 @@ fn main() {
         let input = tui.render(&s);
         debug!("Received input: {:?}", input);
 
-        s = s.next(input);
+        s = s.next(&game, &endpoint, input);
         if s.exit() {
             break;
         }

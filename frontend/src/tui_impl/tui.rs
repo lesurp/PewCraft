@@ -8,7 +8,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use log::{debug};
+use log::debug;
 use std::io::{Stdin, Stdout, StdoutLock, Write};
 use tui::backend::CrosstermBackend;
 use tui::Terminal;
@@ -44,9 +44,7 @@ impl<'a> Tui<'a> {
         self.stdout.hide_cursor().unwrap();
 
         let g = self.game_definition;
-        self.stdout
-            .draw(|mut f| Renderer::render(&mut f, s, g))
-            .unwrap();
+        self.stdout.draw(|f| Renderer::render(f, s, g)).unwrap();
 
         debug!("Current state: {:?}", s);
 
@@ -55,7 +53,7 @@ impl<'a> Tui<'a> {
             // TODO
             TuiEvent::CopyClipboard => {
                 if let Some(string) = s.get_game_id() {
-                    self.clipboard.set_contents(string).unwrap();
+                    self.clipboard.set_contents(string.to_owned()).unwrap();
                 }
                 Event::Other
             }
