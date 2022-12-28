@@ -1,4 +1,5 @@
 #![feature(proc_macro_hygiene, decl_macro)]
+use log::{debug, info};
 
 use common::{
     game::{Character, CharacterMapBuilder, GameDefinition, GameMap, GameState, Id},
@@ -25,12 +26,14 @@ mod game_definition_loader;
 type ServerRunningGames = Mutex<HashMap<String, ServerRunningGame>>;
 type ServerBuiltGames = Mutex<HashMap<String, ServerBuiltGame>>;
 
+#[derive(Debug)]
 struct ServerRunningGame {
     game_state: GameState,
     // Users "login" with a randomly generated string...
     login_to_character_id: HashMap<String, Id<Character>>,
 }
 
+#[derive(Debug)]
 struct ServerBuiltGame {
     // Users "login" with a randomly generated string...
     login_to_character_id: HashMap<String, Id<Character>>,
@@ -72,21 +75,25 @@ fn create_game(
 }
 
 #[get("/<game>")]
-fn get_game(
+fn game_state(
     games: State<ServerRunningGames>,
     builders: State<ServerBuiltGames>,
     game: String,
 ) -> Json<WireGetGame> {
     let builders = builders.lock().unwrap();
     if let Some(builder) = builders.get(&game) {
+        info!("Found game being built for id {game}",);
         return Json(WireGetGame::BeingCreated(builder.map, builder.team_size));
     }
 
     let games = games.lock().unwrap();
-    if let Some(game) = games.get(&game) {
-        return Json(WireGetGame::Running(game.game_state.clone()));
+    if let Some(running_game) = games.get(&game) {
+        info!("Found running game for id {game}");
+        return Json(WireGetGame::Running(running_game.game_state.clone()));
     }
 
+    debug!("Games being built: {:?}", *builders);
+    debug!("Games running: {:?}", *games);
     Json(WireGetGame::None)
 }
 
@@ -97,6 +104,7 @@ fn create_character(
     game: String,
     new_character: Json<WireNewCharRequest>,
 ) -> Result<Json<WireCreatedChar>, ()> {
+    info!("Creating character for game {game} with {new_character:?}");
     let mut builders = builders.lock().unwrap();
 
     // TODO wrong game id
@@ -179,15 +187,6 @@ fn character_action(
 #[get("/game")]
 fn load_game() -> Json<GameDefinition> {
     Json(GAME.clone())
-}
-#[get("/<game>")]
-fn game_state(
-    games: State<ServerRunningGames>,
-    game: String,
-) -> Result<Json<Option<GameState>>, ()> {
-    let games = games.lock().unwrap();
-    let game_state = games.get(&game).map(|g| g.game_state.clone());
-    Ok(Json(game_state))
 }
 
 fn main() {
