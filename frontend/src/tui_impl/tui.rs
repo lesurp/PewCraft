@@ -48,7 +48,7 @@ impl<'a> Tui<'a> {
 
         debug!("Current state: {:?}", s);
 
-        match input::get(s.expected_event()) {
+        match input::get() {
             TuiEvent::StateEvent(e) => e,
             // TODO
             TuiEvent::CopyClipboard => {

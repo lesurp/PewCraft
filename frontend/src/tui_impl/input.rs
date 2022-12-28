@@ -1,4 +1,4 @@
-use crate::state::{Event, ExpectedEvent};
+use crate::state::Event;
 use crossterm::event::{read, KeyCode};
 use futures::executor::block_on;
 use futures::future::FutureExt;
@@ -13,11 +13,11 @@ pub enum TuiEvent {
     PasteClipboard,
 }
 
-pub fn get(ev: ExpectedEvent) -> TuiEvent {
-    block_on(get_async(ev))
+pub fn get() -> TuiEvent {
+    block_on(get_async())
 }
 
-async fn get_async(ev: ExpectedEvent) -> TuiEvent {
+async fn get_async() -> TuiEvent {
     let input = user_input(ev).fuse();
     let timeout = timeout().fuse();
 
@@ -29,31 +29,27 @@ async fn get_async(ev: ExpectedEvent) -> TuiEvent {
     }
 }
 
-fn char_to_event(c: char, ev: ExpectedEvent) -> TuiEvent {
-    TuiEvent::StateEvent(if matches!(ev, ExpectedEvent::Char) {
-        Event::PrintableString(c.to_string())
-    } else {
-        match c {
-            'q' => Event::Exit,
-            'h' => Event::Left,
-            'l' => Event::Right,
-            'j' => Event::Down,
-            'k' => Event::Up,
-            'y' => return TuiEvent::CopyClipboard,
-            '[' => return TuiEvent::PasteClipboard,
-            c => Event::PrintableString(c.to_string()),
-        }
-    })
+fn char_to_event(c: char) -> TuiEvent {
+    match c {
+        'q' => Event::Exit,
+        'h' => Event::Left,
+        'l' => Event::Right,
+        'j' => Event::Down,
+        'k' => Event::Up,
+        '[' => return TuiEvent::CopyClipboard,
+        ']' => return TuiEvent::PasteClipboard,
+        c => Event::PrintableString(c.to_string()),
+    }
 }
 
-async fn user_input(ev: ExpectedEvent) -> TuiEvent {
+async fn user_input() -> TuiEvent {
     TuiEvent::StateEvent(match read().unwrap() {
         RawEvent::Key(key) => match key.code {
             KeyCode::Left => Event::Left,
             KeyCode::Right => Event::Right,
             KeyCode::Up => Event::Up,
             KeyCode::Down => Event::Down,
-            KeyCode::Char(c) => return char_to_event(c, ev),
+            KeyCode::Char(c) => return char_to_event(c),
             KeyCode::Enter => Event::Confirm,
             KeyCode::Backspace => Event::Backspace,
             _ => Event::Other,

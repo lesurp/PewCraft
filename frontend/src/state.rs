@@ -29,15 +29,7 @@ pub enum Event {
     Other,
 }
 
-#[derive(Debug)]
-pub enum ExpectedEvent {
-    Char,
-    Selection,
-    None,
-}
-
 pub trait State {
-    fn expected_event(&self) -> ExpectedEvent;
     fn next(
         self,
         game_definition: &GameDefinition,
@@ -57,17 +49,6 @@ pub enum GlobalState {
 }
 
 impl State for GlobalState {
-    fn expected_event(&self) -> ExpectedEvent {
-        match self {
-            GlobalState::CreateOrJoin(s) => s.expected_event(),
-            GlobalState::SelectMap(_) => ExpectedEvent::Selection,
-            GlobalState::WaitForGameCreation(_) => ExpectedEvent::None,
-            GlobalState::CreateCharacter(s) => s.expected_event(),
-            GlobalState::PlayGame(s) => s.expected_event(),
-            GlobalState::Exit => ExpectedEvent::None,
-        }
-    }
-
     fn next(
         self,
         game_definition: &GameDefinition,
@@ -202,13 +183,6 @@ pub enum CreateOrJoinState {
 }
 
 impl State for CreateOrJoinState {
-    fn expected_event(&self) -> ExpectedEvent {
-        match self {
-            CreateOrJoinState::Join(_) => ExpectedEvent::Char,
-            CreateOrJoinState::Create(_) => ExpectedEvent::None,
-        }
-    }
-
     fn next(
         self,
         game_definition: &GameDefinition,
@@ -306,10 +280,6 @@ impl SelectMapState {
 }
 
 impl State for SelectMapState {
-    fn expected_event(&self) -> ExpectedEvent {
-        ExpectedEvent::Char
-    }
-
     fn next(
         mut self,
         game_definition: &GameDefinition,
@@ -483,15 +453,6 @@ impl CreateCharacterState {
 }
 
 impl State for CreateCharacterState {
-    fn expected_event(&self) -> ExpectedEvent {
-        match self.step {
-            CreateCharacterStep::Team => ExpectedEvent::Selection,
-            CreateCharacterStep::Class => ExpectedEvent::Selection,
-            CreateCharacterStep::Position => ExpectedEvent::Selection,
-            CreateCharacterStep::Name => ExpectedEvent::Char,
-        }
-    }
-
     fn next(
         self,
         game_definition: &GameDefinition,
@@ -522,14 +483,6 @@ pub struct PlayGameState {
 }
 
 impl State for PlayGameState {
-    fn expected_event(&self) -> ExpectedEvent {
-        if self.is_our_turn {
-            unimplemented!()
-        } else {
-            ExpectedEvent::None
-        }
-    }
-
     fn next(
         self,
         game_definition: &GameDefinition,
