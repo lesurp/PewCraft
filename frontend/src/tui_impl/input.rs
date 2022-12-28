@@ -62,6 +62,6 @@ async fn user_input(ev: ExpectedEvent) -> TuiEvent {
     })
 }
 
-async fn timeout() -> () {
+async fn timeout() {
     std::thread::sleep(std::time::Duration::from_millis(500));
 }

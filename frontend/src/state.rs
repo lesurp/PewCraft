@@ -32,8 +32,6 @@ pub enum Event {
 #[derive(Debug)]
 pub enum ExpectedEvent {
     Char,
-    SelectionVertical,
-    SelectionHorizontal,
     Selection,
     None,
 }
@@ -62,7 +60,7 @@ impl State for GlobalState {
     fn expected_event(&self) -> ExpectedEvent {
         match self {
             GlobalState::CreateOrJoin(s) => s.expected_event(),
-            GlobalState::SelectMap(_) => ExpectedEvent::SelectionHorizontal,
+            GlobalState::SelectMap(_) => ExpectedEvent::Selection,
             GlobalState::WaitForGameCreation(_) => ExpectedEvent::None,
             GlobalState::CreateCharacter(s) => s.expected_event(),
             GlobalState::PlayGame(s) => s.expected_event(),
@@ -228,65 +226,55 @@ impl State for CreateOrJoinState {
                 s.login.push_str(&string);
                 GlobalState::CreateOrJoin(CreateOrJoinState::Join(s))
             }
+            (CreateOrJoinState::Join(mut s), Event::Backspace) => {
+                s.login.pop();
+                GlobalState::CreateOrJoin(CreateOrJoinState::Join(s))
+            }
             (CreateOrJoinState::Join(s), Event::Cancel) => {
                 GlobalState::CreateOrJoin(CreateOrJoinState::Create(s))
             }
-            /*
             (CreateOrJoinState::Join(s), Event::Confirm) => {
-                let (global, join) = s.split();
-                let login = &join.login;
-                match login.len() {
+                match s.login.len() {
                     10 => {
-                        let joined_game = global.endpoint.join_game(login);
+                        let joined_game = endpoint.game_state(&s.login);
                         match joined_game {
-                            None => GlobalState::CreateOrJoin(CreateOrJoinState::Create(
-                                CreateOrJoinData::new(global, join),
-                            )),
+                            None => GlobalState::CreateOrJoin(CreateOrJoinState::Join(s)),
                             Some(game_info) => {
-                                let map = global.game.maps.get(game_info.map).unwrap();
-                                let create_character_state_data = CreateCharacterState {
+                                let map = game_definition.maps.get(game_info.map).unwrap();
+                                let create_character = CreateCharacterState {
                                     name: String::new(),
+                                    step: CreateCharacterStep::Team,
                                     class_index: 0,
                                     team_index: 0,
                                     position_index: 0,
 
-                                    classes: global.game.classes.ids(),
+                                    classes: game_definition.classes.ids(),
                                     teams: map
                                         .teams
                                         .iter()
                                         .enumerate()
                                         .map(|(index, _)| Id::new(index))
                                         .collect(),
-                                    map,
-                                    game_id: game_info.game_id,
+                                    map: game_info.map,
+                                    game_id: s.login,
                                 };
-                                let state_data =
-                                    StateData::new(global, create_character_state_data);
-                                let create_character_state = CreateCharacterState::Team(state_data);
-                                GlobalState::CreateCharacter(create_character_state)
+                                GlobalState::CreateCharacter(create_character)
                             }
                         }
                     }
                     21 => {
-                        if login.chars().nth(10).unwrap() != '/' {
-                            GlobalState::CreateOrJoin(CreateOrJoinState::Create(
-                                CreateOrJoinData::new(global, join),
-                            ))
-                        } else {
-                            let game_id = &login[..10];
-                            let char_id = &login[11..];
-                            let _joined_game =
-                                global.endpoint.join_game_with_char(game_id, char_id);
-                            unimplemented!()
-                            //match joined_game
+                        if s.login.chars().nth(10).unwrap() != '/' {
+                            return GlobalState::CreateOrJoin(CreateOrJoinState::Join(s));
                         }
+                        let game_id = &s.login[..10];
+                        let char_id = &s.login[11..];
+                        let _joined_game = endpoint.join_game_with_char(game_id, char_id);
+                        unimplemented!()
+                        //match joined_game
                     }
-                    _ => GlobalState::CreateOrJoin(CreateOrJoinState::Create(
-                        CreateOrJoinData::new(global, join),
-                    )),
+                    _ => GlobalState::CreateOrJoin(CreateOrJoinState::Join(s)),
                 }
             }
-            */
             (CreateOrJoinState::Create(s), Event::Right)
             | (CreateOrJoinState::Create(s), Event::Up)
             | (CreateOrJoinState::Create(s), Event::Down)
@@ -486,7 +474,7 @@ impl CreateCharacterState {
                 self.position_index = wrap_dec(self.position_index, positions.len());
             }
             Event::Confirm => {
-                self.step = CreateCharacterStep::Position;
+                self.step = CreateCharacterStep::Name;
             }
             _ => {}
         }
@@ -497,8 +485,8 @@ impl CreateCharacterState {
 impl State for CreateCharacterState {
     fn expected_event(&self) -> ExpectedEvent {
         match self.step {
-            CreateCharacterStep::Team => ExpectedEvent::SelectionHorizontal,
-            CreateCharacterStep::Class => ExpectedEvent::SelectionHorizontal,
+            CreateCharacterStep::Team => ExpectedEvent::Selection,
+            CreateCharacterStep::Class => ExpectedEvent::Selection,
             CreateCharacterStep::Position => ExpectedEvent::Selection,
             CreateCharacterStep::Name => ExpectedEvent::Char,
         }
