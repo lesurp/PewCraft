@@ -1,7 +1,7 @@
-use crate::api::{self, Endpoint};
+use crate::api::Endpoint;
 use common::game::{Cell, Character, Class, GameDefinition, GameMap, GameState, Id, Team};
 use common::io::{WireCreatedChar, WireCreatedGame, WireNewCharRequest, WireNewGameRequest};
-use log::debug;
+use log::{debug, info};
 
 fn wrap_inc(n: usize, max_n: usize) -> usize {
     (n + 1) % max_n
@@ -212,7 +212,10 @@ impl State for CreateOrJoinState {
                     10 => {
                         let joined_game = endpoint.game_state(&s.login);
                         match joined_game {
-                            None => GlobalState::CreateOrJoin(CreateOrJoinState::Join(s)),
+                            None => {
+                                info!("No game found with id {}", s.login);
+                                GlobalState::CreateOrJoin(CreateOrJoinState::Join(s))
+                            }
                             Some(game_info) => {
                                 let map = game_definition.maps.get(game_info.map).unwrap();
                                 let create_character = CreateCharacterState {
