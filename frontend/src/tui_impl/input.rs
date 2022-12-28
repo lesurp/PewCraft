@@ -18,7 +18,7 @@ pub fn get() -> TuiEvent {
 }
 
 async fn get_async() -> TuiEvent {
-    let input = user_input(ev).fuse();
+    let input = user_input().fuse();
     let timeout = timeout().fuse();
 
     pin_mut!(input, timeout);
@@ -31,14 +31,9 @@ async fn get_async() -> TuiEvent {
 
 fn char_to_event(c: char) -> TuiEvent {
     match c {
-        'q' => Event::Exit,
-        'h' => Event::Left,
-        'l' => Event::Right,
-        'j' => Event::Down,
-        'k' => Event::Up,
-        '[' => return TuiEvent::CopyClipboard,
-        ']' => return TuiEvent::PasteClipboard,
-        c => Event::PrintableString(c.to_string()),
+        '[' => TuiEvent::CopyClipboard,
+        ']' => TuiEvent::PasteClipboard,
+        c => TuiEvent::StateEvent(Event::PrintableString(c.to_string())),
     }
 }
 
@@ -52,6 +47,7 @@ async fn user_input() -> TuiEvent {
             KeyCode::Char(c) => return char_to_event(c),
             KeyCode::Enter => Event::Confirm,
             KeyCode::Backspace => Event::Backspace,
+            KeyCode::Esc => Event::Exit,
             _ => Event::Other,
         },
         _ => Event::Other,
