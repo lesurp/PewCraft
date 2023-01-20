@@ -55,7 +55,7 @@ impl GameState {
     pub fn player_to_play(&self) -> Id<Character> {
         self.turn_order
             .last()
-            .cloned()
+            .copied()
             .expect("Turn is finished and should be reset")
     }
 
