@@ -3,8 +3,8 @@
 use common::{
     game::{Character, CharacterMapBuilder, GameDefinition, GameMap, GameState, Id},
     io::{
-        WireAction, WireCreatedChar, WireCreatedGame, WireGetGame, WireNewCharRequest,
-        WireNewGameRequest,
+        WireAction, WireCreatedChar, WireCreatedGame, WireNewCharRequest, WireNewGameRequest,
+        WireRunningGame,
     },
 };
 use lazy_static::lazy_static;
@@ -35,8 +35,7 @@ struct ServerBuiltGame {
     // Users "login" with a randomly generated string...
     login_to_character_id: HashMap<String, Id<Character>>,
     character_map_builder: CharacterMapBuilder<'static>,
-    map: Id<GameMap>,
-    team_size: usize,
+    serializable_pre_game_info: WireCreatedGame,
 }
 
 #[post("/new_game", data = "<new_game>")]
@@ -51,8 +50,14 @@ fn create_game(
             .collect(),
     )
     .unwrap();
+    let created_game = WireCreatedGame {
+        game_id: s.clone(),
+        map: new_game.map,
+        team_size: new_game.team_size,
+        players: Vec::new(),
+    };
     builders.lock().unwrap().insert(
-        s.clone(),
+        s,
         ServerBuiltGame {
             login_to_character_id: Default::default(),
             character_map_builder: CharacterMapBuilder::new(
@@ -60,34 +65,43 @@ fn create_game(
                 new_game.map,
                 new_game.team_size,
             ),
-            map: new_game.map,
-            team_size: new_game.team_size,
+            serializable_pre_game_info: created_game.clone(),
         },
     );
-    Json(WireCreatedGame {
-        game_id: s,
-        map: new_game.map,
-        team_size: new_game.team_size,
-    })
+    Json(created_game)
 }
 
 #[get("/<game>")]
-fn get_game(
-    games: State<ServerRunningGames>,
+fn get_created_game(
     builders: State<ServerBuiltGames>,
     game: String,
-) -> Json<WireGetGame> {
+) -> Json<Option<WireCreatedGame>> {
     let builders = builders.lock().unwrap();
-    if let Some(builder) = builders.get(&game) {
-        return Json(WireGetGame::BeingCreated(builder.map, builder.team_size));
-    }
+    Json(
+        builders
+            .get(&game)
+            .map(|s| s.serializable_pre_game_info.clone()),
+    )
+}
 
+#[get("/<game>/<login>")]
+fn get_started_game(
+    games: State<ServerRunningGames>,
+    game: String,
+    login: String,
+) -> Json<Option<WireRunningGame>> {
     let games = games.lock().unwrap();
-    if let Some(game) = games.get(&game) {
-        return Json(WireGetGame::Running(game.game_state.clone()));
+    let running_game = if let Some(running_game) = games.get(&game) {
+        running_game
+    } else {
+        return Json(None);
+    };
+    if running_game.login_to_character_id.contains_key(&login) {
+        Json(WireRunningGame(running_game.game_state.clone()).into())
+    } else {
+        // TODO: this should be a 403
+        Json(None)
     }
-
-    Json(WireGetGame::None)
 }
 
 #[post("/<game>", data = "<new_character>")]
@@ -134,7 +148,7 @@ fn create_character(
         let builder = builders.remove(&game).unwrap();
         let character_map = builder.character_map_builder.build();
         let login_to_character_id = builder.login_to_character_id;
-        let map = builder.map;
+        let map = builder.serializable_pre_game_info.map;
         games.lock().unwrap().insert(
             game,
             ServerRunningGame {
