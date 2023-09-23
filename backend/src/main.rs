@@ -83,7 +83,11 @@ fn game_state(
     let builders = builders.lock().unwrap();
     if let Some(builder) = builders.get(&game) {
         info!("Found game being built for id {game}",);
-        return Json(WireGetGame::BeingCreated(builder.map, builder.team_size));
+        return Json(WireGetGame::BeingCreated(WireCreatedGame {
+            game_id: game,
+            map: builder.map,
+            team_size: builder.team_size,
+        }));
     }
 
     let games = games.lock().unwrap();

@@ -73,7 +73,7 @@ impl<'a, 'c, B: tui::backend::Backend> Renderer<'a, 'c, B> {
             }
             // TODO
             GlobalState::WaitForGameCreation(game_state) => {
-                let full_login = format!("{}/{}", game_state.game_id, game_state.login);
+                let full_login = format!("{}/{}", game_state.game_id, game_state.char_id);
                 self.f.render_widget(
                     Block::default()
                         .title(format!(

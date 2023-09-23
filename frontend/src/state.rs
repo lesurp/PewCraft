@@ -1,6 +1,8 @@
 use crate::api::Endpoint;
-use common::game::{Cell, Character, Class, GameDefinition, GameMap, GameState, Id, Team};
-use common::io::{WireCreatedChar, WireCreatedGame, WireNewCharRequest, WireNewGameRequest};
+use common::game::{Character, Class, GameDefinition, GameMap, GameState, Id, Team};
+use common::io::{
+    WireCreatedChar, WireCreatedGame, WireGetGame, WireNewCharRequest, WireNewGameRequest,
+};
 use log::{debug, info};
 
 fn wrap_inc(n: usize, max_n: usize) -> usize {
@@ -24,6 +26,7 @@ pub enum Event {
     Up,
     Down,
     Backspace,
+    #[allow(dead_code)]
     Cancel,
     Confirm,
     Other,
@@ -63,6 +66,9 @@ impl State for GlobalState {
             }
             (GlobalState::SelectMap(s), event) => s.next(game_definition, endpoint, event),
             (GlobalState::CreateCharacter(c), event) => c.next(game_definition, endpoint, event),
+            (GlobalState::WaitForGameCreation(w), event) => {
+                w.next(game_definition, endpoint, event)
+            }
             (s, i) => unimplemented!("Input: {i:?}\nState: {s:?}"),
             /*
             /* SelectMap */
@@ -144,7 +150,6 @@ impl GlobalState {
     pub fn join_game(
         created_game: WireCreatedGame,
         game_definition: &GameDefinition,
-        map: Id<GameMap>,
     ) -> GlobalState {
         let create_character_state = CreateCharacterState {
             step: CreateCharacterStep::Team,
@@ -156,14 +161,14 @@ impl GlobalState {
             classes: game_definition.classes.ids(),
             teams: game_definition
                 .maps
-                .get(map)
+                .get(created_game.map)
                 .unwrap()
                 .teams
                 .iter()
                 .enumerate()
                 .map(|(index, _)| Id::new(index))
                 .collect(),
-            map,
+            map: created_game.map,
             game_id: created_game.game_id,
         };
 
@@ -212,12 +217,15 @@ impl State for CreateOrJoinState {
                     10 => {
                         let joined_game = endpoint.game_state(&s.login);
                         match joined_game {
-                            None => {
+                            WireGetGame::None => {
                                 info!("No game found with id {}", s.login);
                                 GlobalState::CreateOrJoin(CreateOrJoinState::Join(s))
                             }
-                            Some(game_info) => {
-                                let map = game_definition.maps.get(game_info.map).unwrap();
+                            WireGetGame::BeingCreated(created_game) => {
+                                GlobalState::join_game(created_game, game_definition)
+                            }
+                            WireGetGame::Running(game_state) => {
+                                let map = game_definition.maps.get(game_state.map).unwrap();
                                 let create_character = CreateCharacterState {
                                     name: String::new(),
                                     step: CreateCharacterStep::Team,
@@ -232,7 +240,7 @@ impl State for CreateOrJoinState {
                                         .enumerate()
                                         .map(|(index, _)| Id::new(index))
                                         .collect(),
-                                    map: game_info.map,
+                                    map: game_state.map,
                                     game_id: s.login,
                                 };
                                 GlobalState::CreateCharacter(create_character)
@@ -301,7 +309,7 @@ impl State for SelectMapState {
                 };
                 // TODO this can fail :)
                 let created_game = endpoint.create_game(request);
-                return GlobalState::join_game(created_game, game_definition, map_id);
+                return GlobalState::join_game(created_game, game_definition);
             }
             _ => {}
         }
@@ -349,6 +357,9 @@ impl CreateCharacterState {
                 GlobalState::CreateCharacter(self)
             }
             Event::Confirm => {
+                if self.name.is_empty() {
+                    return GlobalState::CreateCharacter(self);
+                }
                 debug!("Creating character with name {}", self.name);
                 let name = self.name;
                 let class = *self.classes.get(self.class_index).unwrap();
@@ -363,7 +374,7 @@ impl CreateCharacterState {
                     .1
                     .get(self.position_index)
                     .unwrap();
-                let WireCreatedChar(login, id) = endpoint.create_char(
+                let WireCreatedChar(char_id, id) = endpoint.create_char(
                     &self.game_id,
                     WireNewCharRequest {
                         name,
@@ -375,7 +386,7 @@ impl CreateCharacterState {
                 GlobalState::WaitForGameCreation(WaitForGameCreationState {
                     map: self.map,
                     game_id: self.game_id,
-                    login,
+                    char_id,
                     id,
                 })
             }
@@ -385,8 +396,8 @@ impl CreateCharacterState {
 
     fn handle_event_team(
         mut self,
-        game_definition: &GameDefinition,
-        endpoint: &Endpoint,
+        _game_definition: &GameDefinition,
+        _endpoint: &Endpoint,
         event: Event,
     ) -> GlobalState {
         match event {
@@ -406,8 +417,8 @@ impl CreateCharacterState {
 
     fn handle_event_class(
         mut self,
-        game_definition: &GameDefinition,
-        endpoint: &Endpoint,
+        _game_definition: &GameDefinition,
+        _endpoint: &Endpoint,
         event: Event,
     ) -> GlobalState {
         match event {
@@ -428,7 +439,7 @@ impl CreateCharacterState {
     fn handle_event_position(
         mut self,
         game_definition: &GameDefinition,
-        endpoint: &Endpoint,
+        _endpoint: &Endpoint,
         event: Event,
     ) -> GlobalState {
         let positions = &game_definition
@@ -475,12 +486,11 @@ impl State for CreateCharacterState {
 
 #[derive(Debug)]
 pub struct PlayGameState {
-    pub cell: Id<Cell>,
+    //pub cell: Id<Cell>,
     pub game_state: GameState,
-    //pub map: &'a GameMap,
     pub map: Id<GameMap>,
     pub game_id: String,
-    pub login: String,
+    pub char_id: String,
     pub id: Id<Character>,
     pub is_our_turn: bool,
 }
@@ -488,9 +498,9 @@ pub struct PlayGameState {
 impl State for PlayGameState {
     fn next(
         self,
-        game_definition: &GameDefinition,
-        endpoint: &Endpoint,
-        event: Event,
+        _game_definition: &GameDefinition,
+        _endpoint: &Endpoint,
+        _event: Event,
     ) -> GlobalState {
         unimplemented!()
     }
@@ -499,8 +509,33 @@ impl State for PlayGameState {
 #[derive(Debug)]
 pub struct WaitForGameCreationState {
     pub map: Id<GameMap>,
-    //pub map: &'a GameMap,
     pub game_id: String,
-    pub login: String,
+    pub char_id: String,
     pub id: Id<Character>,
+}
+
+impl State for WaitForGameCreationState {
+    fn next(
+        self,
+        _game_definition: &GameDefinition,
+        endpoint: &Endpoint,
+        _event: Event,
+    ) -> GlobalState {
+        let game = endpoint.game_state(&self.game_id);
+        match game {
+            WireGetGame::Running(game_state) => GlobalState::PlayGame(PlayGameState {
+                //cell: (),
+                is_our_turn: *game_state.turn_order.last().unwrap() == self.id,
+                game_state,
+                map: self.map,
+                game_id: self.game_id,
+                char_id: self.char_id,
+                id: self.id,
+            }),
+            WireGetGame::BeingCreated(_) => GlobalState::WaitForGameCreation(self),
+            WireGetGame::None => panic!(
+                "Need to handle this! No game being created, but state is waiting for a game..."
+            ),
+        }
+    }
 }

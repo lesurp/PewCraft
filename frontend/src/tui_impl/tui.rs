@@ -1,4 +1,4 @@
-use crate::state::{Event, GlobalState, State};
+use crate::state::{Event, GlobalState};
 use crate::tui_impl::input::{self, TuiEvent};
 use crate::tui_impl::render::Renderer;
 use clipboard::{ClipboardContext, ClipboardProvider};
@@ -9,7 +9,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use log::debug;
-use std::io::{Stdin, Stdout, StdoutLock, Write};
+use std::io::{Stdin, Stdout, StdoutLock};
 use tui::backend::CrosstermBackend;
 use tui::Terminal;
 

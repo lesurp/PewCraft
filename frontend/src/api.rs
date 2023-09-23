@@ -1,5 +1,7 @@
-use common::game::{GameDefinition, GameState};
-use common::io::{WireCreatedChar, WireCreatedGame, WireNewCharRequest, WireNewGameRequest};
+use common::game::GameDefinition;
+use common::io::{
+    WireCreatedChar, WireCreatedGame, WireGetGame, WireNewCharRequest, WireNewGameRequest,
+};
 use log::{debug, info};
 use reqwest::{blocking::Client, Url};
 use std::fmt;
@@ -71,7 +73,7 @@ impl Endpoint {
             .unwrap()
     }
 
-    pub fn game_state<S: AsRef<str>>(&self, game_id: S) -> Option<GameState> {
+    pub fn game_state<S: AsRef<str>>(&self, game_id: S) -> WireGetGame {
         self.client
             .get(self.url.join(game_id.as_ref()).unwrap())
             .send()

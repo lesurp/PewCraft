@@ -31,6 +31,6 @@ pub struct WireNewGameRequest {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum WireGetGame {
     Running(GameState),
-    BeingCreated(Id<GameMap>, usize),
+    BeingCreated(WireCreatedGame),
     None,
 }
